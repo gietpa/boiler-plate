@@ -4,8 +4,8 @@ const port = 5000;
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const config = require("./config/key");
-
-const { User } = require("./models/user");
+const { auth } = require("./middleware/auth");
+const { User } = require("./models/User");
 
 //application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -27,7 +27,7 @@ mongoose
 
 app.get("/", (req, res) => res.send("Hello World! Hi"));
 
-app.post("/register", (req, res) => {
+app.post("/api/users/register", (req, res) => {
   //Put into db from client
   const user = new User(req.body);
 
@@ -39,7 +39,7 @@ app.post("/register", (req, res) => {
   });
 });
 
-app.post("/login", (req, res) => {
+app.post("/api/users/login", (req, res) => {
   //check requested email in DB
   User.findOne({ email: req.body.email }, (err, user) => {
     if (!user) {
@@ -62,6 +62,29 @@ app.post("/login", (req, res) => {
           .status(200)
           .json({ loginSuccess: true, userId: user._id });
       });
+    });
+  });
+});
+
+app.get("/api/users/auth", auth, (req, res) => {
+  //여기까지 미들웨어를 통과했다는 것은 Authentication 이 True
+  res.status(200).json({
+    _id: req.user._id,
+    isAdmin: req.user.role === 0 ? false : true,
+    isAuth: true,
+    email: req.user.email,
+    name: req.user.name,
+    lastname: req.user.lastname,
+    role: req.user.role,
+    image: req.user.image,
+  });
+});
+
+app.get("/api/users/logout", auth, (req, res) => {
+  User.findOneAndUpdate({ _id: req.user._id }, { token: "" }, (err, user) => {
+    if (err) return res.json({ success: false, err });
+    return res.status(200).send({
+      success: true,
     });
   });
 });
